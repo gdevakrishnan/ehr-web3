@@ -146,14 +146,15 @@ def patient_registration():
             # Generate encryption key for the patient
             encryption_key = Fernet.generate_key().decode('utf-8')
             
-            # Save encrypted patient data
-            save_patient_data(form, patient_wallet_address)
             
             # Deploy smart contract
             contract_address = deploy_patient_contract(
                 first_name, last_name, iid, bdate, 
                 email, phone, zip_code, city, encryption_key
             )
+
+            # Save encrypted patient data
+            save_patient_data(form, contract_address, patient_wallet_address)
             
             # Generate QR code URL with the contract address
             patient_qr = f"https://api.qrserver.com/v1/create-qr-code/?data={contract_address}&size=150x150"
@@ -178,7 +179,7 @@ def patient_registration():
             
     return render_template('patientreg.html', form=form)
 
-def save_patient_data(form, patient_wallet_address):
+def save_patient_data(form, contract_address, patient_wallet_address):
     pass_hash = hashlib.sha224(
         bytes(form.password.data, encoding='utf-8')
     ).hexdigest()
@@ -189,6 +190,7 @@ def save_patient_data(form, patient_wallet_address):
         "first_name": fernet.encrypt(form.name_first.data.encode('utf-8')).decode('utf-8'),
         "last_name": fernet.encrypt(form.name_last.data.encode('utf-8')).decode('utf-8'),
         "patient_wallet_address": fernet.encrypt(patient_wallet_address.encode('utf-8')).decode('utf-8'),
+        "contract_address": fernet.encrypt(contract_address.encode('utf-8')).decode('utf-8'),
         "email": fernet.encrypt(form.email.data.encode('utf-8')).decode('utf-8'),
         "phone": fernet.encrypt(form.phone.data.encode('utf-8')).decode('utf-8'),
         "city": fernet.encrypt(form.city.data.encode('utf-8')).decode('utf-8'),
