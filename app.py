@@ -242,5 +242,64 @@ def deploy_patient_contract(first_name, last_name, iid, bdate, email, phone, zip
     
     return contract_address
 
+class LogForm(FlaskForm):
+    account_address = StringField('Account Address', validators=[DataRequired()])
+    contract_address = StringField('Contract Address (If Audit put 0)', validators=[DataRequired()])
+    password = PasswordField('Your Password', validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LogForm()
+    if form.validate_on_submit():
+        input_wallet = form.account_address.data.strip()
+        input_contract = form.contract_address.data.strip()
+        input_password = form.password.data.strip()
+        
+        # Search all patient records
+        all_patients = patients_collection.find()
+        for patient in all_patients:
+            try:
+                # Decrypt and compare wallet + contract
+                decrypted_wallet = fernet.decrypt(patient['patient_wallet_address'].encode()).decode()
+                decrypted_contract = fernet.decrypt(patient['contract_address'].encode()).decode()
+
+                if decrypted_wallet == input_wallet and decrypted_contract == input_contract:
+                    # Decrypt stored password hash
+                    print('hi')
+                    decrypted_pass_hash = fernet.decrypt(patient['password_hash'].encode()).decode()
+                    input_pass_hash = hashlib.sha224(input_password.encode()).hexdigest()
+                    
+                    if decrypted_pass_hash == input_pass_hash:
+                        # Decrypt remaining patient info
+                        decrypted_data = {
+                            "first_name": fernet.decrypt(patient['first_name'].encode()).decode(),
+                            "last_name": fernet.decrypt(patient['last_name'].encode()).decode(),
+                            "email": fernet.decrypt(patient['email'].encode()).decode(),
+                            "phone": fernet.decrypt(patient['phone'].encode()).decode(),
+                            "city": fernet.decrypt(patient['city'].encode()).decode(),
+                            "zip_code": fernet.decrypt(patient['zip_code'].encode()).decode(),
+                            "insurance_id": fernet.decrypt(patient['insurance_id'].encode()).decode(),
+                            "birth_date": fernet.decrypt(patient['birth_date'].encode()).decode(),
+                            "wallet_address": decrypted_wallet,
+                            "contract_address": decrypted_contract,
+                            "created_at": patient['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        
+                        # Success: render patient dashboard/info
+                        return render_template('index.html', patient=decrypted_data)
+
+                    else:
+                        flash("Incorrect password. Please try again.", "danger")
+                        return redirect(url_for('patient_login'))
+
+            except Exception as e:
+                print(f"Error during login matching: {e}")
+                continue  # If decryption fails for a record, move on
+
+        flash("Patient not found with the provided credentials.", "danger")
+    return render_template('login.html', form=form)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
