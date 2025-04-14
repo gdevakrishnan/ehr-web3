@@ -1,0 +1,111 @@
+{% extends 'bootstrap/base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+Patient Registration
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .container {
+        margin-top: 50px;
+    }
+    .form-header {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .btn-submit {
+        background-color: #4CAF50;
+        border-color: #4CAF50;
+        width: 100%;
+        margin-top: 15px;
+    }
+    .btn-submit:hover {
+        background-color: #3e8e41;
+        border-color: #3e8e41;
+    }
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="form-container">
+        <div class="form-header">
+            <h2>Patient Registration</h2>
+            <p>Register to deploy your personal health record on the blockchain</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" action="{{ url_for('patient_registration') }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.name_first) }}
+                </div>
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.name_last) }}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.IID) }}
+                </div>
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.bdate) }}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.email) }}
+                </div>
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.phone) }}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.city) }}
+                </div>
+                <div class="col-md-6">
+                    {{ wtf.form_field(form.zip_code) }}
+                </div>
+            </div>
+            
+            {{ wtf.form_field(form.password) }}
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary btn-submit">Register</button>
+            </div>
+        </form>
+        
+        <div class="text-center mt-3">
+            <a href="{{ url_for('index') }}">Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

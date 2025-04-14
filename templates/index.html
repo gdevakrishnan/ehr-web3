@@ -1,0 +1,57 @@
+{% extends 'bootstrap/base.html' %}
+
+{% block title %}
+Patient Blockchain Registry
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .container {
+        margin-top: 50px;
+        text-align: center;
+    }
+    .jumbotron {
+        background-color: #f8f9fa;
+        padding: 2rem;
+        border-radius: 0.3rem;
+        margin-bottom: 2rem;
+    }
+    .btn-primary {
+        background-color: #4CAF50;
+        border-color: #4CAF50;
+    }
+    .btn-primary:hover {
+        background-color: #3e8e41;
+        border-color: #3e8e41;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="jumbotron">
+        <h1>Patient Blockchain Registry System</h1>
+        <p class="lead">A secure way to manage patient records on the blockchain</p>
+        <hr class="my-4">
+        <p>Register as a new patient to secure your medical records on the Ethereum blockchain.</p>
+        <p class="lead">
+            <a class="btn btn-primary btn-lg" href="{{ url_for('patient_registration') }}" role="button">Register as Patient</a>
+        </p>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <h3>Secure</h3>
+            <p>Your medical data is encrypted and stored securely on the blockchain.</p>
+        </div>
+        <div class="col-md-4">
+            <h3>Transparent</h3>
+            <p>All access to your records is tracked and visible to you.</p>
+        </div>
+        <div class="col-md-4">
+            <h3>Controlled</h3>
+            <p>You decide who can access your medical information.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

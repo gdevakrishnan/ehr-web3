@@ -1,0 +1,90 @@
+{% extends 'bootstrap/base.html' %}
+
+{% block title %}
+Registration Complete
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .container {
+        margin-top: 50px;
+        text-align: center;
+    }
+    .result-card {
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .success-header {
+        color: #4CAF50;
+        margin-bottom: 25px;
+    }
+    .patient-info {
+        margin: 25px 0;
+        text-align: left;
+    }
+    .patient-info h4 {
+        margin-top: 15px;
+        font-weight: bold;
+    }
+    .qr-section {
+        margin: 25px 0;
+    }
+    .action-buttons {
+        margin: 25px 0;
+    }
+    .address-box {
+        background-color: #e9ecef;
+        padding: 10px;
+        border-radius: 4px;
+        word-break: break-all;
+        margin: 10px 0;
+    }
+    .btn-home {
+        background-color: #4CAF50;
+        border-color: #4CAF50;
+    }
+    .btn-home:hover {
+        background-color: #3e8e41;
+        border-color: #3e8e41;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="result-card">
+        <h2 class="success-header">Registration Successful!</h2>
+        <p>{{ result }}</p>
+        
+        <div class="patient-info">
+            <h4>Patient Information</h4>
+            <p><strong>Name:</strong> {{ username }}</p>
+            
+            <h4>Contract Address:</h4>
+            <div class="address-box">
+                {{ address }}
+            </div>
+            
+            <p><strong>Transaction:</strong> 
+                <a href="{{ etherscan_link }}" target="_blank">{{ tx_hash }}</a>
+            </p>
+        </div>
+        
+        <div class="qr-section">
+            <h4>Your QR Code</h4>
+            <p>Scan this QR code to access your medical records</p>
+            <img src="{{ patient_qr }}" alt="Patient QR Code">
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-home">Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
