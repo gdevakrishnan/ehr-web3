@@ -10,6 +10,8 @@ from datetime import datetime
 from cryptography.fernet import Fernet
 import hashlib
 from dotenv import load_dotenv
+from pymongo import MongoClient
+import base64
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +20,16 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default-secret-key')
 Bootstrap(app)
+
+MONGODB_URI = os.getenv('MONGODB_URI')
+DB_NAME = os.getenv('DB_NAME', 'patient_db')
+if not MONGODB_URI:
+    raise ValueError("No MongoDB URI found in environment variables")
+
+client = MongoClient(MONGODB_URI)
+db = client[DB_NAME]
+patients_collection = db.patients
+audit_collection = db.audit_logs
 
 # Set up Alchemy connection to Sepolia
 ALCHEMY_API_KEY = os.getenv('ALCHEMY_API_KEY')
@@ -56,21 +68,35 @@ Patient = w3.eth.contract(abi=abi, bytecode=bytecode)
 
 # Set up encryption
 def setup_encryption():
-    # Generate key if not exists
     key_path = 'data/enc_key.key'
+    
     if not os.path.exists('data'):
         os.makedirs('data')
-    
-    if not os.path.exists(key_path):
+
+    def is_valid_fernet_key(key):
+        try:
+            Fernet(key)
+            return True
+        except ValueError:
+            return False
+
+    key = None
+    if os.path.exists(key_path):
+        with open(key_path, 'rb') as key_file:
+            key = key_file.read()
+            if not is_valid_fernet_key(key):
+                print("Invalid encryption key found. Regenerating...")
+                key = Fernet.generate_key()
+                with open(key_path, 'wb') as key_file:
+                    key_file.write(key)
+            else:
+                print("Loaded existing encryption key")
+    else:
         key = Fernet.generate_key()
         with open(key_path, 'wb') as key_file:
             key_file.write(key)
         print("Generated new encryption key")
-    else:
-        with open(key_path, 'rb') as key_file:
-            key = key_file.read()
-        print("Loaded existing encryption key")
-    
+
     return Fernet(key)
 
 # Initialize encryption
@@ -87,6 +113,7 @@ class PatientRegForm(FlaskForm):
     zip_code = StringField('ZIP Code', validators=[DataRequired(), Length(min=5, max=10)])
     city = StringField('City', validators=[DataRequired(), Length(min=2, max=50)])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
+    private_key = PasswordField('Private Key', validators=[DataRequired(), Length(min=64, max=66)])
     submit = SubmitField('Register')
 
 @app.route('/')
@@ -108,12 +135,19 @@ def patient_registration():
             phone = form.phone.data
             zip_code = form.zip_code.data
             city = form.city.data
+
+            try:
+                patient_account = w3.eth.account.from_key(form.private_key.data)
+                patient_wallet_address = patient_account.address
+                print(f"Patient wallet address: {patient_wallet_address}")
+            except Exception as e:
+                flash("Invalid private key. Please double-check your input.", "danger")
             
             # Generate encryption key for the patient
             encryption_key = Fernet.generate_key().decode('utf-8')
             
             # Save encrypted patient data
-            save_patient_data(form, encryption_key)
+            save_patient_data(form, patient_wallet_address)
             
             # Deploy smart contract
             contract_address = deploy_patient_contract(
@@ -135,7 +169,7 @@ def patient_registration():
                 address=contract_address,
                 tx_hash="View on Etherscan",
                 etherscan_link=f"https://sepolia.etherscan.io/address/{contract_address}",
-                patient_qr=patient_qr
+                qr_link=patient_qr
             )
             
         except Exception as e:
@@ -144,36 +178,40 @@ def patient_registration():
             
     return render_template('patientreg.html', form=form)
 
-def save_patient_data(form, encryption_key):
-    """Encrypt and save patient data to a file"""
-    # Create data directory if it doesn't exist
-    if not os.path.exists('data'):
-        os.makedirs('data')
-    
-    # Hash password for storage
+def save_patient_data(form, patient_wallet_address):
     pass_hash = hashlib.sha224(
-        bytes("loremipsum" + form.password.data, encoding='utf-8')
+        bytes(form.password.data, encoding='utf-8')
     ).hexdigest()
     
     # Encrypt patient data
-    encrypted_data = "patient" + ", " + \
-        str(fernet.encrypt(b"patient")) + ", " + \
-        str(fernet.encrypt(form.name_first.data.encode('utf-8'))) + ", " + \
-        str(fernet.encrypt(form.name_last.data.encode('utf-8'))) + ", " + \
-        str(fernet.encrypt(form.email.data.encode('utf-8'))) + ", " + \
-        str(fernet.encrypt(form.phone.data.encode('utf-8'))) + ", " + \
-        str(fernet.encrypt(form.city.data.encode('utf-8'))) + ", " + \
-        str(fernet.encrypt(form.zip_code.data.encode('utf-8'))) + ", " + \
-        str(fernet.encrypt(form.IID.data.encode('utf-8'))) + ", " + \
-        str(fernet.encrypt(pass_hash.encode('utf-8'))) + ", " + \
-        str(encryption_key) + "\n"
+    patient_data = {
+        "user_type": "patient",
+        "first_name": fernet.encrypt(form.name_first.data.encode('utf-8')).decode('utf-8'),
+        "last_name": fernet.encrypt(form.name_last.data.encode('utf-8')).decode('utf-8'),
+        "patient_wallet_address": fernet.encrypt(patient_wallet_address.encode('utf-8')).decode('utf-8'),
+        "email": fernet.encrypt(form.email.data.encode('utf-8')).decode('utf-8'),
+        "phone": fernet.encrypt(form.phone.data.encode('utf-8')).decode('utf-8'),
+        "city": fernet.encrypt(form.city.data.encode('utf-8')).decode('utf-8'),
+        "zip_code": fernet.encrypt(form.zip_code.data.encode('utf-8')).decode('utf-8'),
+        "insurance_id": fernet.encrypt(form.IID.data.encode('utf-8')).decode('utf-8'),
+        "birth_date": fernet.encrypt(form.bdate.data.strftime('%Y-%m-%d').encode('utf-8')).decode('utf-8'),
+        "password_hash": fernet.encrypt(pass_hash.encode('utf-8')).decode('utf-8'),
+        "created_at": datetime.now()
+    }
+
+    # # Create audit log for data saving
+    # create_audit_log(
+    #     action="save_patient_data",
+    #     user_id=str(result.inserted_id),
+    #     details="Patient data encrypted and stored"
+    # )
+
+    result = patients_collection.insert_one(patient_data)
+    print(f"Patient data saved successfully with ID: {result.inserted_id}")
+    return result.inserted_id
     
-    # Save to file
-    fname = hashlib.sha224(b"signin_data").hexdigest()
-    with open(f"data/{fname}.csv", "a") as f:
-        f.write(encrypted_data)
     
-    print("Patient data saved successfully")
+
 
 def deploy_patient_contract(first_name, last_name, iid, bdate, email, phone, zip_code, city, encryption_key):
     """Deploy the patient contract to Sepolia"""
