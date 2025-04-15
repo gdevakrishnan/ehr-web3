@@ -2,7 +2,7 @@
 {% import 'bootstrap/wtf.html' as wtf %}
 
 {% block title %}
-Login
+User Login
 {% endblock %}
 
 {% block styles %}
@@ -19,24 +19,23 @@ Login
         margin-bottom: 20px;
     }
     .btn-submit {
-        background-color: #007BFF;
-        border-color: #007BFF;
+        background-color: #007bff;
+        border-color: #007bff;
         width: 100%;
         margin-top: 15px;
     }
     .btn-submit:hover {
-        background-color: #0056b3;
-        border-color: #0056b3;
+        background-color: #0069d9;
+        border-color: #0062cc;
     }
     .form-container {
-        max-width: 600px;
+        max-width: 500px;
         margin: 0 auto;
         padding: 20px;
         border: 1px solid #ddd;
         border-radius: 5px;
         background-color: #f9f9f9;
     }
-
     .login-options {
         margin-top: 20px;
         text-align: center;
@@ -44,11 +43,27 @@ Login
 </style>
 {% endblock %}
 
+{% block nav %}
+<div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('login') }}">Patient Login</a>
+        </li>
+        <li class="nav-item active">
+            <a class="nav-link" href="{{ url_for('user_login') }}">Staff Login</a>
+        </li>
+    </ul>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="form-container">
     <div class="form-header">
-        <h2>Login</h2>
-        <p>Log in to your account</p>
+        <h2>User Login</h2>
+        <p>Login for doctors and auditors</p>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -61,28 +76,29 @@ Login
         {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('login') }}">
+    <form method="POST" action="{{ url_for('user_login') }}">
         {{ form.hidden_tag() }}
 
         <div class="form-group">
-            {{ wtf.form_field(form.account_address, class="form-control", id="account_address", placeholder="Enter your account address") }}
+            {{ wtf.form_field(form.employee_id) }}
         </div>
 
         <div class="form-group">
-            {{ wtf.form_field(form.contract_address, class="form-control", id="contract_address", placeholder="Enter your contract address") }}
+            {{ wtf.form_field(form.account_address) }}
         </div>
 
         <div class="form-group">
-            {{ wtf.form_field(form.password, class="form-control", id="password", placeholder="Enter your password") }}
+            {{ wtf.form_field(form.password) }}
         </div>
-
+        
         <div class="form-group">
             <button type="submit" class="btn btn-primary btn-submit">Login</button>
         </div>
     </form>
 
     <div class="login-options">
-        <a href="{{ url_for('user_login') }}">Patient/Auditors Login</a> | <a href="{{ url_for('index') }}">Back to Home</a>
+        <a href="{{ url_for('login') }}">Patient Login</a> | 
+        <a href="{{ url_for('index') }}">Back to Home</a>
     </div>
 </div>
 {% endblock %}

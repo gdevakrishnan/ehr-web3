@@ -1,0 +1,123 @@
+{% extends 'layout.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}
+Doctor Registration
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .container {
+        margin-top: 100px;
+    }
+
+    .form-header {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .btn-submit {
+        background-color: #28a745;
+        border-color: #28a745;
+        width: 100%;
+        margin-top: 15px;
+    }
+
+    .btn-submit:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+</style>
+{% endblock %}
+
+{% block nav %}
+<div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('add_doctor') }}">Doctor</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('add_audit') }}">Audit</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#">{{ patient_data.wallet_address[:8] }}...{{ patient_data.wallet_address[-6:]
+                }}</a>
+        </li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h2>Doctor Registration</h2>
+        <p>Register as a verified doctor on the blockchain-based health system</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('add_doctor') }}">
+        {{ form.hidden_tag() }}
+
+        <div class="row">
+            <div class="col-md-6">
+                {{ wtf.form_field(form.name_first) }}
+            </div>
+            <div class="col-md-6">
+                {{ wtf.form_field(form.name_last) }}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                {{ wtf.form_field(form.email) }}
+            </div>
+            <div class="col-md-6">
+                {{ wtf.form_field(form.account_address) }}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                {{ wtf.form_field(form.password) }}
+            </div>
+            <div class="col-md-6">
+                {{ wtf.form_field(form.confirm) }}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-success btn-submit">Register</button>
+        </div>
+    </form>
+
+    <div class="text-center mt-3">
+        <a href="{{ url_for('index') }}">Back to Home</a>
+    </div>
+</div>
+{% endblock %}
