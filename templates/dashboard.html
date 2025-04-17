@@ -12,23 +12,52 @@ Dashboard
         margin-top: 80px;
         text-align: center;
     }
+
     .patient-card {
         max-width: 600px;
-        margin: 0 auto;
+        margin: 0 auto 30px;
         background-color: #f8f9fa;
-        padding: 30px;
+        padding: 20px;
         border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
+
     .patient-info {
         margin-bottom: 15px;
     }
+
     .label {
         font-weight: bold;
         color: #343a40;
     }
+
     .value {
         color: #495057;
+    }
+
+    .visit_btn {
+        border: none;
+        outline: none;
+        background-color: green;
+        color: #fcfcfc;
+        padding: 4px 12px;
+        border-radius: 4px;
+    }
+
+    .unique_id {
+        margin-top: 10px;
+    }
+
+    .unique_id span {
+        font-weight: bold;
+    }
+
+    .alert {
+        transition: opacity 0.5s ease-out;
+    }
+
+    .alert.hide {
+        opacity: 0;
     }
 </style>
 {% endblock %}
@@ -40,13 +69,18 @@ Dashboard
             <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
         </li>
         <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('records') }}">Records</a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link" href="{{ url_for('add_doctor') }}">Doctor</a>
         </li>
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('add_audit') }}">Audit</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="#">{{ patient_data.wallet_address[:8] }}...{{ patient_data.wallet_address[-6:] }}</a>
+            <a class="nav-link" href="#">
+                {{ patient_data.wallet_address[:8] }}...{{ patient_data.wallet_address[-6:] }}
+            </a>
         </li>
     </ul>
 </div>
@@ -57,18 +91,49 @@ Dashboard
     <h2>Welcome, {{ patient_data.first_name }}!</h2>
 </div>
 
-<div class="patient-card">
-    {% for key, value in patient_data.items() %}
-        <div class="patient-info">
-            <span class="label">{{ key.replace('_', ' ') | title }}:</span>
-            <span class="value">
-                {% if key == 'wallet_address' %}
-                    {{ value[:8] }}.....{{ value[-6:] }}
-                {% else %}
-                    {{ value }}
-                {% endif %}
-            </span>
-        </div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div>
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} fade show" role="alert">
+        {{ message }}
+    </div>
     {% endfor %}
 </div>
+{% endif %}
+{% endwith %}
+
+<div class="patient-card">
+    {% for key, value in patient_data.items() %}
+    <div class="patient-info">
+        <span class="label">{{ key.replace('_', ' ') | title }}:</span>
+        <span class="value">
+            {% if key == 'wallet_address' %}
+            {{ value[:8] }}.....{{ value[-6:] }}
+            {% else %}
+            {{ value }}
+            {% endif %}
+        </span>
+    </div>
+    {% endfor %}
+    <div>
+        <a href="{{ url_for('visit_hospital') }}"><button class="visit_btn">Visit Hospital</button></a>
+        {% if unique_id %}
+        <p class="unique_id">Latest unique ID of the visit: <span>{{ unique_id }}</span></p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    setTimeout(function () {
+        document.querySelectorAll('.alert').forEach(function (alert) {
+            alert.classList.add('hide');
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 4000);
+</script>
 {% endblock %}

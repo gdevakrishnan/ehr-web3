@@ -46,10 +46,13 @@ Auditor Registration
             <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('add_doctor') }}">Add Doctor</a>
+            <a class="nav-link" href="{{ url_for('records') }}">Records</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link active" href="{{ url_for('add_audit') }}">Add Auditor</a>
+            <a class="nav-link" href="{{ url_for('add_doctor') }}">Doctor</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link active" href="{{ url_for('add_audit') }}">Auditor</a>
         </li>
         <li class="nav-item">
             <a class="nav-link" href="#">{{ patient_data.wallet_address[:8] }}...{{ patient_data.wallet_address[-6:] }}</a>

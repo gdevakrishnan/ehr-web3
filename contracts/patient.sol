@@ -3,67 +3,47 @@ pragma solidity ^0.8.0;
 
 contract Patient {
     
-    /////////// VARIABLES ///////////////////
-    
-    // address
+    /////////////// VARIABLES ///////////////////
     address owner;
     
-    //identity
+    // Identity
     string private firstName;
     string private lastName;
     string private IID;
     
-    //birthday
+    // Birthday
     string private bdate;
     
-    //contract
+    // Contact Info
     string private email;
     string private phone;
     string private zip;
     string private city;
     
-    // keys
-    string encryption_key;
-    
-    /////////// VARIABLES END ///////////////
+    // Encryption Key
+    string private encryption_key;
 
-    
-    
-    /////////// DECLARATIONS ////////////
-    
+    /////////////// STRUCTS ///////////////////
     struct medical_record {
         bool is_uid_generated;
         uint256 record_id;
         string record_msg;
         uint record_status; // 0-Created, 1-Deleted, 2-Changed, 3-Queried, 4-Printed, 5-Copied
-        
-        // all images files etc will be stored here
         string record_details;
-        
         address patient_address;
         uint record_time;
-        
         address doctor;
         uint doctor_time;
-        
         address audit;
         uint audit_time;
     }
-    
-    /////////// DECLARATIONS END////////
-    
-    
-    ////////// MAPPINGS ////////////////
-    
-    mapping (address => medical_record) public record_mapping; 
+
+    /////////////// MAPPINGS ///////////////////
+    mapping (uint256 => medical_record) public record_mapping;
     mapping (address => bool) public doctors;
     mapping (address => bool) public audits;
-    ////////// MAPPINGS END ////////////
-    
-    
-    ////////// MODIFIERS ///////////////////
-    
-    // initiate patient data
+
+    /////////////// MODIFIERS ///////////////////
     constructor(
         string memory _firstName, 
         string memory _lastName, 
@@ -86,323 +66,187 @@ contract Patient {
         city = _city;
         encryption_key = _encryption_key;
     }
-    
-    // make the patient using this contract only owner
+
     modifier only_owner() {
         require(owner == msg.sender, "Not the owner");
         _;
     }
-    
-    ////////// MODIFIERS END////////////////
 
-    ////////////// EVENTS ////////////////////
-    event event_start_visit(
-        address record_unique_id,
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-        
-    event event_add_doctor(
-        string return_msg,
-        address doctor_address,
-        uint record_time
-    );
-    
-    event event_remove_doctor(
-        string return_msg,
-        address doctor_address,
-        uint record_time
-    );
-    
-    event event_add_audit(
-        string return_msg,
-        address audit_address,
-        uint record_time
-    );
-    
-    event event_remove_audit(
-        string return_msg,
-        address audit_address,
-        uint record_time
-    );
-    
-    event event_patient_print(
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-    
-    event event_patient_delete(
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-    
-    event event_doctor_delete(
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-    
-    event event_doctor_print(
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-    
-    event event_doctor_copy(
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-    
-    event event_doctor_query(
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-    
-    event event_doctor_update(
-        string record_msg,
-        uint record_status,
-        uint record_time
-    );
-    
-    ////////////// EVENTS END////////////////
-    
-    ////////// PATIENT FUNCTIONS //////////////
-    
-    // create a medical record with unique id
-    // patient makes appointment
-    function start_visit(uint _time) public only_owner returns (address) {
-        address unique_id = address(uint160(uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp)))));
-        record_mapping[unique_id].is_uid_generated = true;
-        record_mapping[unique_id].record_id = uint256(uint160(unique_id));
-        record_mapping[unique_id].record_msg = "New Medical Record is created";
-        record_mapping[unique_id].record_status = 0;
-        
-        record_mapping[unique_id].record_details = "Visit initiate";
-        
-        record_mapping[unique_id].patient_address = msg.sender;
-        record_mapping[unique_id].record_time = _time;
-        emit event_start_visit(
-            unique_id,
-            record_mapping[unique_id].record_msg,
-            record_mapping[unique_id].record_status, 
-            record_mapping[unique_id].record_time
-        );
-        return unique_id;
+    /////////////// EVENTS ///////////////////
+    event event_start_visit(uint256 record_unique_id, string record_msg, uint record_status, uint record_time);
+    event event_add_doctor(string return_msg, address doctor_address, uint record_time);
+    event event_remove_doctor(string return_msg, address doctor_address, uint record_time);
+    event event_add_audit(string return_msg, address audit_address, uint record_time);
+    event event_remove_audit(string return_msg, address audit_address, uint record_time);
+    event event_patient_print(string record_msg, uint record_status, uint record_time);
+    event event_patient_delete(string record_msg, uint record_status, uint record_time);
+    event event_doctor_delete(string record_msg, uint record_status, uint record_time);
+    event event_doctor_print(string record_msg, uint record_status, uint record_time);
+    event event_doctor_copy(string record_msg, uint record_status, uint record_time);
+    event event_doctor_query(string record_msg, uint record_status, uint record_time);
+    event event_doctor_update(string record_msg, uint record_status, uint record_time);
+
+    /////////////// PATIENT FUNCTIONS ///////////////////
+
+    function start_visit(uint _time, uint256 unique_id) public only_owner {
+        require(!record_mapping[unique_id].is_uid_generated, "Duplicate ID generated, try again");
+
+        record_mapping[unique_id] = medical_record({
+            is_uid_generated: true,
+            record_id: unique_id,
+            record_msg: "New Medical Record is created",
+            record_status: 0,
+            record_details: "Visit initiate",
+            patient_address: msg.sender,
+            record_time: _time,
+            doctor: address(0),
+            doctor_time: 0,
+            audit: address(0),
+            audit_time: 0
+        });
+
+        emit event_start_visit(unique_id, "New Medical Record is created", 0, _time);
     }
-    
-    // give permissions to doctors -- authorize doctors
+
     function addDoctors(address _doctor_address) public only_owner returns (string memory) {
-       
-        // if doctor is not authorized yet
-        if(!doctors[_doctor_address]) {
-            doctors[_doctor_address] = true;
-        }
+        doctors[_doctor_address] = true;
         emit event_add_doctor("A doctor is added.", _doctor_address, block.timestamp);
         return "A doctor is added.";
     }
-    
-    // take back permissions -- delete authorization of doctors
+
     function removeDoctors(address _doctor_address) public only_owner returns (string memory) {
-       
-        // if doctor is authorized 
-        if(doctors[_doctor_address]) {
-            doctors[_doctor_address] = false;
-        }
+        doctors[_doctor_address] = false;
         emit event_remove_doctor("A doctor is removed.", _doctor_address, block.timestamp);
         return "A doctor is removed.";
     }
-    
-    // Give permissions to audits
+
     function addAudit(address _audit_address) public only_owner returns (string memory) {
-       
-        // if audit is not authorized yet
-        if(!audits[_audit_address]) {
-            audits[_audit_address] = true;
-        }
+        audits[_audit_address] = true;
         emit event_add_audit("An audit is added.", _audit_address, block.timestamp);
         return "An audit is added.";
     }
-    
-    // take back permissions -- delete authorization of audits
+
     function removeAudit(address _audit_address) public only_owner returns (string memory) {
-       
-        // if audit is authorized 
-        if(audits[_audit_address]) {
-            audits[_audit_address] = false;
-        }
+        audits[_audit_address] = false;
         emit event_remove_audit("An audit is removed.", _audit_address, block.timestamp);
         return "An audit is removed.";
     }
-    
-    //////////// PATIENT FUNCTIONS END ///////////
-    
-    /////////// GET MEDICAL RECORDS /////////////
-    function get_record_details(address _unique_id) view public returns (string memory) {
-        require(record_mapping[_unique_id].is_uid_generated == true, "Record does not exist");
+
+    /////////////// RECORD RETRIEVAL ///////////////////
+
+    function get_record_details(uint256 _unique_id) view public returns (string memory) {
+        require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(record_mapping[_unique_id].record_status != 1, "Record was deleted");
-        
-        if(record_mapping[_unique_id].patient_address == msg.sender) {
+
+        if (record_mapping[_unique_id].patient_address == msg.sender || 
+            doctors[msg.sender] || 
+            audits[msg.sender]) {
             return record_mapping[_unique_id].record_details;
         }
-        
-        if(doctors[msg.sender]) {
-            return record_mapping[_unique_id].record_details;
-        }
-        
-        if(audits[msg.sender]) {
-            return record_mapping[_unique_id].record_details;
-        }
-        
+
         return "You have no authorization.";
     }
-    
-    /////////// END GET MEDICAL RECORDS /////////
 
-    
-    /////////// MODIFICATION OF MEDICAL DATA  /////////////////
-    
-    // patient can delete his/her medical record
-    function delete_record(address _unique_id) public returns (string memory) {
-        require(record_mapping[_unique_id].is_uid_generated == true, "Record does not exist");
+    /////////////// MODIFICATIONS BY PATIENT ///////////////////
+
+    function delete_record(uint256 _unique_id) public returns (string memory) {
+        require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(record_mapping[_unique_id].patient_address == msg.sender, "Not the patient");
         require(record_mapping[_unique_id].record_status != 1, "Record already deleted");
-         
+
         record_mapping[_unique_id].record_details = "";
-        record_mapping[_unique_id].record_time = block.timestamp;
-        
         record_mapping[_unique_id].record_status = 1;
+        record_mapping[_unique_id].record_time = block.timestamp;
         record_mapping[_unique_id].record_msg = "Record is deleted by patient.";
-        emit event_patient_delete(
-            record_mapping[_unique_id].record_msg,
-            record_mapping[_unique_id].record_status,
-            record_mapping[_unique_id].record_time
-        );
+
+        emit event_patient_delete("Record is deleted by patient.", 1, block.timestamp);
         return "Record is deleted by patient.";
     }
-    
-    // patient can print his/her medical record
-    function print_record(address _unique_id) public returns (string memory) {
-        require(record_mapping[_unique_id].is_uid_generated == true, "Record does not exist");
+
+    function print_record(uint256 _unique_id) public returns (string memory) {
+        require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(record_mapping[_unique_id].patient_address == msg.sender, "Not the patient");
         require(record_mapping[_unique_id].record_status != 1, "Record was deleted");
-         
-        record_mapping[_unique_id].record_time = block.timestamp;
 
         record_mapping[_unique_id].record_status = 4;
+        record_mapping[_unique_id].record_time = block.timestamp;
         record_mapping[_unique_id].record_msg = "Record is printed by patient.";
-        emit event_patient_print(
-            record_mapping[_unique_id].record_msg,
-            record_mapping[_unique_id].record_status,
-            record_mapping[_unique_id].record_time
-        );
-        
+
+        emit event_patient_print("Record is printed by patient.", 4, block.timestamp);
         return "Record is printed by patient.";
     }
-    
-    // doctor deletes medical record
-    function doctor_delete_record(address _unique_id) public returns (string memory) {
+
+    /////////////// MODIFICATIONS BY DOCTOR ///////////////////
+
+    function doctor_delete_record(uint256 _unique_id) public returns (string memory) {
         require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(doctors[msg.sender], "Not authorized as doctor");
         require(record_mapping[_unique_id].record_status != 1, "Record already deleted");
-    
-        record_mapping[_unique_id].doctor = msg.sender;
-        record_mapping[_unique_id].doctor_time = block.timestamp;
-        
+
         record_mapping[_unique_id].record_details = "";
         record_mapping[_unique_id].record_status = 1;
-        record_mapping[_unique_id].record_msg = "Record is deleted by doctor/audit.";
-        emit event_doctor_delete(
-            record_mapping[_unique_id].record_msg,
-            record_mapping[_unique_id].record_status,
-            record_mapping[_unique_id].record_time
-        );
-        
+        record_mapping[_unique_id].doctor = msg.sender;
+        record_mapping[_unique_id].doctor_time = block.timestamp;
+        record_mapping[_unique_id].record_msg = "Record is deleted by doctor.";
+
+        emit event_doctor_delete("Record is deleted by doctor.", 1, block.timestamp);
         return "Record is deleted by doctor.";
     }
-    
-    // doctor prints medical record
-    function doctor_print_record(address _unique_id) public returns (string memory) {
+
+    function doctor_print_record(uint256 _unique_id) public returns (string memory) {
         require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(doctors[msg.sender], "Not authorized as doctor");
         require(record_mapping[_unique_id].record_status != 1, "Record was deleted");
-    
+
+        record_mapping[_unique_id].record_status = 4;
         record_mapping[_unique_id].doctor = msg.sender;
         record_mapping[_unique_id].doctor_time = block.timestamp;
-        
-        record_mapping[_unique_id].record_status = 4;
-        record_mapping[_unique_id].record_msg = "Record is printed by doctor/audit.";
-        emit event_doctor_print(
-            record_mapping[_unique_id].record_msg,
-            record_mapping[_unique_id].record_status,
-            record_mapping[_unique_id].record_time
-        );
-        
+        record_mapping[_unique_id].record_msg = "Record is printed by doctor.";
+
+        emit event_doctor_print("Record is printed by doctor.", 4, block.timestamp);
         return "Record is printed by doctor.";
     }
-    
-    // doctor query medical record
-    function doctor_query_record(address _unique_id) public returns (string memory) {
+
+    function doctor_query_record(uint256 _unique_id) public returns (string memory) {
         require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(doctors[msg.sender], "Not authorized as doctor");
         require(record_mapping[_unique_id].record_status != 1, "Record was deleted");
-    
+
+        record_mapping[_unique_id].record_status = 3;
         record_mapping[_unique_id].doctor = msg.sender;
         record_mapping[_unique_id].doctor_time = block.timestamp;
-        
-        record_mapping[_unique_id].record_status = 3;
-        record_mapping[_unique_id].record_msg = "Record is queried by doctor/audit.";
-        emit event_doctor_query(
-            record_mapping[_unique_id].record_msg,
-            record_mapping[_unique_id].record_status,
-            record_mapping[_unique_id].record_time
-        );
-        
+        record_mapping[_unique_id].record_msg = "Record is queried by doctor.";
+
+        emit event_doctor_query("Record is queried by doctor.", 3, block.timestamp);
         return "Record is queried by doctor.";
     }
-    
-    // doctor copy medical record
-    function doctor_copy_record(address _unique_id) public returns (string memory) {
+
+    function doctor_copy_record(uint256 _unique_id) public returns (string memory) {
         require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(doctors[msg.sender] || audits[msg.sender], "Not authorized as doctor or audit");
         require(record_mapping[_unique_id].record_status != 1, "Record was deleted");
-    
+
+        record_mapping[_unique_id].record_status = 5;
         record_mapping[_unique_id].doctor = msg.sender;
         record_mapping[_unique_id].doctor_time = block.timestamp;
-        
-        record_mapping[_unique_id].record_status = 5;
         record_mapping[_unique_id].record_msg = "Record is copied by doctor/audit.";
-        emit event_doctor_copy(
-            record_mapping[_unique_id].record_msg,
-            record_mapping[_unique_id].record_status,
-            record_mapping[_unique_id].record_time
-        );
-        
+
+        emit event_doctor_copy("Record is copied by doctor/audit.", 5, block.timestamp);
         return "Record is copied by doctor/audit.";
     }
-    
-    // doctor update medical record
-    function doctor_update_record(address _unique_id, string memory _update) public returns (string memory) {
+
+    function doctor_update_record(uint256 _unique_id, string memory _update) public returns (string memory) {
         require(record_mapping[_unique_id].is_uid_generated, "Record does not exist");
         require(doctors[msg.sender], "Not authorized as doctor");
         require(record_mapping[_unique_id].record_status != 1, "Record was deleted");
-    
+
+        record_mapping[_unique_id].record_status = 2;
         record_mapping[_unique_id].doctor = msg.sender;
         record_mapping[_unique_id].doctor_time = block.timestamp;
         record_mapping[_unique_id].record_details = _update;
-        record_mapping[_unique_id].record_status = 5;
-        record_mapping[_unique_id].record_msg = "Record is updated by doctor/audit.";
-        emit event_doctor_update(
-            record_mapping[_unique_id].record_msg,
-            record_mapping[_unique_id].record_status,
-            record_mapping[_unique_id].record_time
-        );
-        
+        record_mapping[_unique_id].record_msg = "Record is updated by doctor.";
+
+        emit event_doctor_update("Record is updated by doctor.", 2, block.timestamp);
         return "Record is updated by doctor.";
     }
-    ////////////MODIFICATION OF MEDICAL DATA END ///////////////
 }

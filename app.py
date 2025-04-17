@@ -4,8 +4,10 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, DateField
 from wtforms.validators import DataRequired, Email, Length
 from web3 import Web3
+from bson import json_util
 import json
 import os
+import time
 from datetime import datetime
 from cryptography.fernet import Fernet
 import hashlib
@@ -24,7 +26,7 @@ Bootstrap(app)
 
 # MongoDB setup
 MONGODB_URI = os.getenv('MONGODB_URI')
-DB_NAME = os.getenv('DB_NAME', 'patient_db')
+DB_NAME = os.getenv('DB_NAME', 'ehr_db')
 if not MONGODB_URI:
     raise ValueError("No MongoDB URI found in environment variables")
 
@@ -33,6 +35,7 @@ db = client[DB_NAME]
 patients_collection = db.patients
 users_collection = db.users
 audits_collection = db.audits
+medical_records = db.medical_records
 
 # Set up Alchemy connection to Sepolia
 ALCHEMY_API_KEY = os.getenv('ALCHEMY_API_KEY')
@@ -450,10 +453,16 @@ def login():
 @app.route('/dashboard')
 def dashboard():
     data = session.get('patient_data')
+    unique_id = session.get('current_visit_id')
     if not data:
         flash("Please login first", "warning")
         return redirect(url_for('login'))
-    return render_template('dashboard.html', patient_data=data)
+    
+    if unique_id:
+        return render_template('dashboard.html', patient_data=data, unique_id=unique_id)
+    else:
+        return render_template('dashboard.html', patient_data=data, unique_id=None)
+
 
 @app.route('/add-doctor', methods=['GET', 'POST'])
 def add_doctor():
@@ -645,7 +654,7 @@ def user_login():
     
     return render_template('user_login.html', form=form)
 
-@app.route('/user-dashboard')
+@app.route('/user-dashboard', methods=['GET'])
 def user_dashboard():
     user_data = session.get('user_data')
     if not user_data:
@@ -653,6 +662,95 @@ def user_dashboard():
         return redirect(url_for('user_login'))
     
     return render_template('user_dashboard.html', user_data=user_data)
+
+@app.route('/visit-hospital', methods=['GET', 'POST'])
+def visit_hospital():
+    try:
+        data = session.get('patient_data')
+        if not data:
+            flash("Please login first", "warning")
+            return redirect(url_for('login'))
+
+        # Generate a unique 6-digit ID
+        unique_id = None
+        while True:
+            potential_id = ''.join(random.choices('0123456789', k=6))
+            if not medical_records.find_one({"unique_id": potential_id}):
+                unique_id = potential_id
+                break
+
+        current_time = int(time.time())
+
+        contract_address = Web3.to_checksum_address(data['contract_address'])
+        contract = w3.eth.contract(address=contract_address, abi=abi)
+
+        # Build the transaction
+        txn = contract.functions.start_visit(current_time, int(unique_id)).build_transaction({
+            'from': account_address,
+            'nonce': w3.eth.get_transaction_count(account_address),
+            'gas': 300000,
+            'gasPrice': w3.to_wei('10', 'gwei'),
+        })
+
+        if (txn):
+            medical_records_data = {
+                "unique_id": unique_id,
+                "account_address": account_address,
+                "patient_contract": contract_address,
+
+                "record_msg": fernet.encrypt("New Medical Record is created".encode('utf-8')).decode('utf-8'),
+                "record_details": fernet.encrypt("Visit initiate".encode('utf-8')).decode('utf-8'),
+                "doctor_address": fernet.encrypt("".encode('utf-8')).decode('utf-8'),
+                "audit_address": fernet.encrypt("".encode('utf-8')).decode('utf-8'),
+
+                "created_at": datetime.now()
+            }
+            session['current_visit_id'] = unique_id
+            result = medical_records.insert_one(medical_records_data)
+            print(f"Patient data saved successfully with ID: {result.inserted_id}")
+            flash("A new visit was created successfully.", "success")
+            return redirect(url_for('dashboard'))
+        else:
+            raise ValueError("Transaction failed.")
+
+    except Exception as e:
+        print(f"Error during /visit-hospital: {e}")
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('dashboard'))
+
+@app.route('/records', methods=['GET'])
+def records():
+    try:
+        data = session.get('patient_data')
+        if not data:
+            flash("Please login first", "warning")
+            return redirect(url_for('login'))
+        
+        user_medical_record_raw = medical_records.find({'patient_contract': data['contract_address']})
+        user_medical_record_json_str = json_util.dumps(user_medical_record_raw)
+        user_medical_record_dict = json.loads(user_medical_record_json_str)
+
+        user_medical_record = []
+
+        for item in user_medical_record_dict:
+            print(item)
+            user_medical_record.append({
+                "_id": item["_id"]["$oid"],
+                "unique_id": item["unique_id"],
+                "patient_contract": item["patient_contract"],
+                "record_msg": fernet.decrypt(item["record_msg"].encode('utf-8')).decode('utf-8'),
+                "record_details": fernet.decrypt(item["record_details"].encode('utf-8')).decode('utf-8'),
+                "doctor_address": fernet.decrypt(item["doctor_address"].encode('utf-8')).decode('utf-8'),
+                "audit_address": fernet.decrypt(item["audit_address"].encode('utf-8')).decode('utf-8'),
+                "created_at": item["created_at"]["$date"]
+            })
+
+        return render_template('medical_records.html', patient_data=data, data=user_medical_record)
+    
+    except Exception as e:
+        print(f"Error during /records: {e}")
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('dashboard'))
 
 
 if __name__ == '__main__':
