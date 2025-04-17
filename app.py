@@ -733,7 +733,6 @@ def records():
         user_medical_record = []
 
         for item in user_medical_record_dict:
-            print(item)
             user_medical_record.append({
                 "_id": item["_id"]["$oid"],
                 "unique_id": item["unique_id"],
@@ -752,6 +751,20 @@ def records():
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('dashboard'))
 
+@app.route('/profile', methods=['GET'])
+def profile ():
+    try:
+        data = session.get('patient_data')
+        if not data:
+            flash("Please login first", "warning")
+            return redirect(url_for('login'))
+        
+        return render_template('profile.html', patient_data=data)
+    
+    except Exception as e:
+        print(f"Error during /profile: {e}")
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True)
