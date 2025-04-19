@@ -37,6 +37,9 @@
                 {{ user_data.wallet_address[:8] }}...{{ user_data.wallet_address[-6:] }}
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+        </li>
     </ul>
 </div>
 {% endblock %}

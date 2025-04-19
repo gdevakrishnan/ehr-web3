@@ -896,5 +896,11 @@ def update_record(unique_id, wallet_address):
 
     return redirect(url_for('view_record', unique_id=unique_id))
 
+@app.route('/logout')
+def logout():
+    session.clear()  # Clears all session data
+    flash("You have been logged out.", "info")
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True)
