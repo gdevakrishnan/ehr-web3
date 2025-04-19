@@ -344,6 +344,7 @@ def login():
                     input_pass_hash = hashlib.sha224(input_password.encode()).hexdigest()
                     if decrypted_pass_hash == input_pass_hash:
                         decrypted_data = {
+                            "user_type": "patient",
                             "first_name": fernet.decrypt(patient['first_name'].encode()).decode(),
                             "last_name": fernet.decrypt(patient['last_name'].encode()).decode(),
                             "email": fernet.decrypt(patient['email'].encode()).decode(),
@@ -576,7 +577,7 @@ def visit_hospital():
                 print(f"Medical record saved with ID: {result.inserted_id}")
                 session['current_visit_id'] = unique_id
                 flash(f"New visit created successfully. Visit ID: {unique_id}", "success")
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('records'))
             else:
                 raise ValueError("Transaction failed. Check contract state or funds.")
                 
@@ -670,6 +671,7 @@ def view_record(unique_id):
     try:
         # Validate inputs
         user_data = session.get("user_data")
+        print('user_data: ', user_data)
         if not user_data:
             flash("Please login first", "warning")
             return redirect(url_for('login'))
@@ -804,13 +806,43 @@ def verify_record(unique_id, wallet_address):
             return redirect(url_for('user_dashboard'))
 
         flash('Record successfully verified', 'success')
-        return redirect(url_for('records'))
+        return redirect(url_for('view_record', unique_id=unique_id))
+
 
     except Exception as e:
         app.logger.error(f"Error verifying record for ID {unique_id}: {e}")
         flash('An internal error occurred. Please try again later.', 'danger')
         return redirect(url_for('user_dashboard'))
 
+@app.route('/update-record/<unique_id>/<wallet_address>', methods=['POST'])
+def update_record(unique_id, wallet_address):
+    user_data = session.get('user_data')
+    if not user_data or user_data.get('user_type') != 'doctor':
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
+    updated_details = request.form.get('record_details')
+    if not updated_details:
+        flash("Medical details are required.", "warning")
+        return redirect(url_for('view_record', unique_id=unique_id))  # Or wherever your view is
+
+    try:
+        result = medical_records.update_one(
+            {'unique_id': unique_id},
+            {'$set': {
+                'record_details': fernet.encrypt(updated_details.encode('utf-8')).decode('utf-8'),
+                'doctor_address': fernet.encrypt(wallet_address.encode('utf-8')).decode('utf-8')
+            }}
+        )
+        if result.modified_count > 0:
+            flash("Medical record updated successfully.", "success")
+        else:
+            flash("No changes were made.", "info")
+    except Exception as e:
+        app.logger.error(f"Error updating record {unique_id}: {e}")
+        flash("An error occurred while updating the record.", "danger")
+
+    return redirect(url_for('view_record', unique_id=unique_id))
 
 
 if __name__ == '__main__':

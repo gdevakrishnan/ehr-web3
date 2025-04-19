@@ -43,6 +43,15 @@
 
 {% block content %}
 <div class="container header_container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
     <div class="row">
         <div class="col-md-12">
             <div class="card">
@@ -59,7 +68,8 @@
                                 {% if user_data.user_type == 'patient' %}
                                 <p><strong>Name:</strong> {{ user_data.first_name }} {{ user_data.last_name }}</p>
                                 {% else %}
-                                <p><strong>Name:</strong> {{ user_data.patient_first_name }} {{ user_data.patient_last_name }}</p>
+                                <p><strong>Name:</strong> {{ user_data.patient_first_name }} {{
+                                    user_data.patient_last_name }}</p>
                                 {% endif %}
                                 <p><strong>Birth Date:</strong> {{ user_data.birth_date }}</p>
                                 <p><strong>Insurance ID:</strong> {{ user_data.insurance_id }}</p>
@@ -92,7 +102,8 @@
                             <div class="col-md-6">
                                 <p><strong>Doctor:</strong> {{ record.doctor_address if record.doctor_address else 'Not
                                     assigned' }}</p>
-                                <p><strong>Auditor:</strong> {{ record.audit_address if record.audit_address else 'Not assigned' }}</p>
+                                <p><strong>Auditor:</strong> {{ record.audit_address if record.audit_address else 'Not
+                                    assigned' }}</p>
                                 <p><strong>Transaction:</strong>
                                     {% if record.tx_hash %}
                                     <a href="https://sepolia.etherscan.io/tx/{{ record.tx_hash }}" target="_blank"
@@ -119,6 +130,21 @@
                         </div>
                     </div>
 
+                    {% if user_data.user_type == 'doctor' %}
+                    <hr>
+                    <form method="POST"
+                        action="{{ url_for('update_record', unique_id=record.unique_id, wallet_address=user_data.wallet_address) }}">
+                        <div class="form-group">
+                            <label for="recordDetailsTextarea"><strong>Update Medical Details</strong></label>
+                            <textarea class="form-control" id="recordDetailsTextarea" name="record_details" rows="6"
+                                required>{{ record.record_details }}</textarea>
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="submit" class="btn btn-success">Update Record</button>
+                        </div>
+                    </form>
+                    {% endif %}
+
                     <!-- Blockchain Data -->
                     {% if record.blockchain_data and record.blockchain_data != "Not available" %}
                     <hr>
@@ -135,16 +161,13 @@
                 <div class="card-footer">
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('records') }}" class="btn btn-secondary">Back to Records</a>
-                        {% if session.get('user_data') and session.get('user_data').user_type == 'doctor' %}
-                        <a href="#" class="btn btn-primary">Update Record</a>
-                        {% endif %}
-
                         {% if user_data.user_type == 'audit' %}
-                            {% if record.audit_address %}
-                                <p class="text-danger">*Already Verified</p>
-                            {% else %}
-                                <a href="{{ url_for('verify_record', unique_id=record.unique_id, wallet_address=user_data.wallet_address) }}" class="btn btn-primary">Verifiy</a>
-                            {% endif %}
+                        {% if record.audit_address %}
+                        <p class="text-danger">*Already Verified</p>
+                        {% else %}
+                        <a href="{{ url_for('verify_record', unique_id=record.unique_id, wallet_address=user_data.wallet_address) }}"
+                            class="btn btn-primary">Verifiy</a>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>
