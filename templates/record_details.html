@@ -92,8 +92,7 @@
                             <div class="col-md-6">
                                 <p><strong>Doctor:</strong> {{ record.doctor_address if record.doctor_address else 'Not
                                     assigned' }}</p>
-                                <p><strong>Auditor:</strong> {{ record.audit_address if record.audit_address else 'Not
-                                    assigned' }}</p>
+                                <p><strong>Auditor:</strong> {{ record.audit_address if record.audit_address else 'Not assigned' }}</p>
                                 <p><strong>Transaction:</strong>
                                     {% if record.tx_hash %}
                                     <a href="https://sepolia.etherscan.io/tx/{{ record.tx_hash }}" target="_blank"
@@ -138,6 +137,14 @@
                         <a href="{{ url_for('records') }}" class="btn btn-secondary">Back to Records</a>
                         {% if session.get('user_data') and session.get('user_data').user_type == 'doctor' %}
                         <a href="#" class="btn btn-primary">Update Record</a>
+                        {% endif %}
+
+                        {% if user_data.user_type == 'audit' %}
+                            {% if record.audit_address %}
+                                <p class="text-danger">*Already Verified</p>
+                            {% else %}
+                                <a href="{{ url_for('verify_record', unique_id=record.unique_id, wallet_address=user_data.wallet_address) }}" class="btn btn-primary">Verifiy</a>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>

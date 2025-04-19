@@ -301,7 +301,6 @@ def patient_registration():
             try:
                 patient_account = w3.eth.account.from_key(form.private_key.data)
                 patient_wallet_address = patient_account.address
-                print(f"Patient wallet address: {patient_wallet_address}")
             except Exception:
                 flash("Invalid private key. Please double-check your input.", "danger")
                 return redirect(url_for('patient_registration'))
@@ -475,7 +474,6 @@ def user_login():
                 try:
                     decrypted_employee_id = fernet.decrypt(user['employee_id'].encode()).decode()
                     decrypted_account = fernet.decrypt(user['wallet_address'].encode()).decode()
-                    print('user["wallet_address"]: ', decrypted_employee_id, decrypted_account)
                     if decrypted_employee_id == input_employee_id and decrypted_account == input_account_address:
                         decrypted_pass_hash = fernet.decrypt(user['password_hash'].encode()).decode()
                         if decrypted_pass_hash == input_pass_hash:
@@ -491,7 +489,6 @@ def user_login():
                             }
                             if 'tx_hash' in user:
                                 user_data["tx_hash"] = fernet.decrypt(user['tx_hash'].encode()).decode()
-                            print(user_data)
                             session['user_data'] = user_data
                             flash(f"Welcome, {user_data['first_name']} {user_data['last_name']}!", "success")
                             return redirect(url_for('user_dashboard'))
@@ -510,7 +507,6 @@ def user_login():
 @app.route('/user-dashboard', methods=['GET'])
 def user_dashboard():
     user_data = session.get('user_data')
-    print('user_data: ', user_data)
     if not user_data:
         flash("Please login first", "warning")
         return redirect(url_for('user_login'))
@@ -598,7 +594,6 @@ def visit_hospital():
 def records():
     try:
         data = session.get('user_data')
-        print(data)
         if not data:
             flash("Please login first", "warning")
             return redirect(url_for('login'))
@@ -691,8 +686,6 @@ def view_record(unique_id):
             flash("Record not found in the database", "danger")
             return redirect(url_for('records'))
 
-        print('record_doc["contract_address"]: ', record_doc["contract_address"])
-
         # Match decrypted patient contract address
         matched_patient = None
         for patient in patients_collection.find():
@@ -708,8 +701,6 @@ def view_record(unique_id):
         if not matched_patient:
             flash("Associated patient record not found", "danger")
             return redirect(url_for('records'))
-        
-        print('matched_patient: ', matched_patient)
 
         # Assign decrypted patient data to user_data (for non-patient users)
         if user_data['user_type'] != 'patient':
@@ -754,8 +745,6 @@ def view_record(unique_id):
                 "from": patient_address
             })
 
-            print('blockchain record', blockchain_record)
-
             record["blockchain_data"] = {
                 "is_uid_generated": blockchain_record[0],
                 "record_id": blockchain_record[1],
@@ -779,6 +768,50 @@ def view_record(unique_id):
         print(f"Error in view_record: {str(e)}")
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('records'))
+
+@app.route('/verify-record/<unique_id>/<wallet_address>', methods=['GET'])
+def verify_record(unique_id, wallet_address):
+    user_data = session.get("user_data")
+    if not user_data:
+        flash("Please login first", "warning")
+        return redirect(url_for('login'))
+
+    try:
+        if not unique_id or not wallet_address:
+            flash('Missing required information', 'danger')
+            return redirect(url_for('user_dashboard'))
+
+        # Fetch the record
+        record = medical_records.find_one({'unique_id': unique_id})
+        if not record:
+            flash('Medical record not found', 'danger')
+            return redirect(url_for('user_dashboard'))
+
+        # Check if already verified by this address
+        current_audit_address = record.get('audit_address')
+        if current_audit_address == wallet_address:
+            flash('Wallet already verified this record', 'info')
+            return redirect(url_for('records'))
+
+        # Update the audit_address
+        result = medical_records.update_one(
+            {'unique_id': unique_id},
+            {'$set': {'audit_address': fernet.encrypt(wallet_address.encode('utf-8')).decode('utf-8')}}
+        )
+
+        if result.modified_count == 0:
+            flash('Failed to update record in database', 'warning')
+            return redirect(url_for('user_dashboard'))
+
+        flash('Record successfully verified', 'success')
+        return redirect(url_for('records'))
+
+    except Exception as e:
+        app.logger.error(f"Error verifying record for ID {unique_id}: {e}")
+        flash('An internal error occurred. Please try again later.', 'danger')
+        return redirect(url_for('user_dashboard'))
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
