@@ -74,15 +74,21 @@ Staff Dashboard
 {% block nav %}
 <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
     <ul class="navbar-nav">
+        {% if user_data.user_type == 'patient' %}
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
         </li>
+        {% else %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('user_dashboard') }}">Home</a>
+        </li>
+        {% endif %}
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('records') }}">Records</a>
         </li>
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('profile') }}">
-                {{ patient_data.wallet_address[:8] }}...{{ patient_data.wallet_address[-6:] }}
+                {{ user_data.wallet_address[:8] }}...{{ user_data.wallet_address[-6:] }}
             </a>
         </li>
     </ul>
@@ -159,14 +165,14 @@ Staff Dashboard
                     <div class="row">
                         <div class="col-md-4 info-label">Account Address:</div>
                         <div class="col-md-8 info-value">
-                            <div class="address-box">{{ user_data.account_address }}</div>
+                            <div class="address-box">{{ user_data.wallet_address }}</div>
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-4 info-label">Patient Contract:</div>
                         <div class="col-md-8 info-value">
-                            <div class="address-box">{{ user_data.patient_contract }}</div>
+                            <div class="address-box">{{ user_data.contract_address }}</div>
                         </div>
                     </div>
                     
@@ -190,7 +196,7 @@ Staff Dashboard
                 <div class="card-header">Actions</div>
                 <div class="card-body text-center">
                     {% if user_data.user_type == 'doctor' %}
-                        <a href="#" class="btn btn-primary action-button">Access Patient Medical Records</a>
+                        <a href="{{ url_for('records') }}" class="btn btn-primary action-button">Access Patient Medical Records</a>
                     {% elif user_data.user_type == 'audit' %}
                         <a href="#" class="btn btn-info action-button">View Audit Trail</a>
                     {% endif %}

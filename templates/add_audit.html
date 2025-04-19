@@ -42,9 +42,15 @@ Auditor Registration
 {% block nav %}
 <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
     <ul class="navbar-nav">
+        {% if user_data.user_type == 'patient' %}
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
         </li>
+        {% else %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('user_dashboard') }}">Home</a>
+        </li>
+        {% endif %}
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('records') }}">Records</a>
         </li>
@@ -55,7 +61,7 @@ Auditor Registration
             <a class="nav-link active" href="{{ url_for('add_audit') }}">Auditor</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('profile') }}">{{ patient_data.wallet_address[:8] }}...{{ patient_data.wallet_address[-6:] }}</a>
+            <a class="nav-link" href="{{ url_for('profile') }}">{{ user_data.wallet_address[:8] }}...{{ user_data.wallet_address[-6:] }}</a>
         </li>
     </ul>
 </div>

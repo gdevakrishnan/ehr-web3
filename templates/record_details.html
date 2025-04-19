@@ -9,6 +9,38 @@
 </style>
 {% endblock %}
 
+{% block nav %}
+<div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+    <ul class="navbar-nav">
+        {% if user_data.user_type == 'patient' %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
+        </li>
+        {% else %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('user_dashboard') }}">Home</a>
+        </li>
+        {% endif %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('records') }}">Records</a>
+        </li>
+        {% if user_data.user_type == 'patient' %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('add_doctor') }}">Doctor</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('add_audit') }}">Audit</a>
+        </li>
+        {% endif %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('profile') }}">
+                {{ user_data.wallet_address[:8] }}...{{ user_data.wallet_address[-6:] }}
+            </a>
+        </li>
+    </ul>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="container header_container">
     <div class="row">
@@ -24,14 +56,14 @@
                         <h5>Patient Information</h5>
                         <div class="row">
                             <div class="col-md-6">
-                                <p><strong>Name:</strong> {{ patient_data.first_name }} {{ patient_data.last_name }}</p>
-                                <p><strong>Birth Date:</strong> {{ patient_data.birth_date }}</p>
-                                <p><strong>Insurance ID:</strong> {{ patient_data.insurance_id }}</p>
+                                <p><strong>Name:</strong> {{ user_data.first_name }} {{ user_data.last_name }}</p>
+                                <p><strong>Birth Date:</strong> {{ user_data.birth_date }}</p>
+                                <p><strong>Insurance ID:</strong> {{ user_data.insurance_id }}</p>
                             </div>
                             <div class="col-md-6">
-                                <p><strong>Email:</strong> {{ patient_data.email }}</p>
-                                <p><strong>Phone:</strong> {{ patient_data.phone }}</p>
-                                <p><strong>Location:</strong> {{ patient_data.city }}, {{ patient_data.zip_code }}</p>
+                                <p><strong>Email:</strong> {{ user_data.email }}</p>
+                                <p><strong>Phone:</strong> {{ user_data.phone }}</p>
+                                <p><strong>Location:</strong> {{ user_data.city }}, {{ user_data.zip_code }}</p>
                             </div>
                         </div>
                     </div>
@@ -43,20 +75,25 @@
                         <h5>Record Information</h5>
                         <div class="row">
                             <div class="col-md-6">
-                                <p><strong>Created:</strong> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') if record.created_at is not string else record.created_at }}</p>
+                                <p><strong>Created:</strong> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') if
+                                    record.created_at is not string else record.created_at }}</p>
                                 <p><strong>Status:</strong> {{ record.record_msg }}</p>
-                                <p><strong>Contract Address:</strong> 
-                                    <a href="https://sepolia.etherscan.io/address/{{ record.patient_contract }}" target="_blank" class="text-break">
-                                        {{ record.patient_contract }}
+                                <p><strong>Contract Address:</strong>
+                                    <a href="https://sepolia.etherscan.io/address/{{ record.contract_address }}"
+                                        target="_blank" class="text-break">
+                                        {{ record.contract_address }}
                                     </a>
                                 </p>
                             </div>
                             <div class="col-md-6">
-                                <p><strong>Doctor:</strong> {{ record.doctor_address if record.doctor_address else 'Not assigned' }}</p>
-                                <p><strong>Auditor:</strong> {{ record.audit_address if record.audit_address else 'Not assigned' }}</p>
-                                <p><strong>Transaction:</strong> 
+                                <p><strong>Doctor:</strong> {{ record.doctor_address if record.doctor_address else 'Not
+                                    assigned' }}</p>
+                                <p><strong>Auditor:</strong> {{ record.audit_address if record.audit_address else 'Not
+                                    assigned' }}</p>
+                                <p><strong>Transaction:</strong>
                                     {% if record.tx_hash %}
-                                    <a href="https://sepolia.etherscan.io/tx/{{ record.tx_hash }}" target="_blank" class="text-break">
+                                    <a href="https://sepolia.etherscan.io/tx/{{ record.tx_hash }}" target="_blank"
+                                        class="text-break">
                                         {{ record.tx_hash }}
                                     </a>
                                     {% else %}

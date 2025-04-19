@@ -65,9 +65,15 @@ Dashboard
 {% block nav %}
 <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
     <ul class="navbar-nav">
+        {% if user_data.user_type == 'patient' %}
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('dashboard') }}">Home</a>
         </li>
+        {% else %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('user_dashboard') }}">Home</a>
+        </li>
+        {% endif %}
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('records') }}">Records</a>
         </li>
@@ -79,7 +85,7 @@ Dashboard
         </li>
         <li class="nav-item">
             <a class="nav-link" href="{{ url_for('profile') }}">
-                {{ patient_data.wallet_address[:8] }}...{{ patient_data.wallet_address[-6:] }}
+                {{ user_data.wallet_address[:8] }}...{{ user_data.wallet_address[-6:] }}
             </a>
         </li>
     </ul>
@@ -88,7 +94,7 @@ Dashboard
 
 {% block content %}
 <div class="header">
-    <h2>Welcome, {{ patient_data.first_name }}!</h2>
+    <h2>Welcome, {{ user_data.first_name }}!</h2>
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -104,7 +110,7 @@ Dashboard
 {% endwith %}
 
 <div class="patient-card">
-    {% for key, value in patient_data.items() %}
+    {% for key, value in user_data.items() %}
     <div class="patient-info">
         <span class="label">{{ key.replace('_', ' ') | title }}:</span>
         <span class="value">

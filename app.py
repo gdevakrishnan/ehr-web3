@@ -240,7 +240,7 @@ def add_audit_to_contract(contract_address, audit_address):
         print(f"Error adding auditor to contract: {e}")
         return {'success': False, 'message': str(e)}
 
-def deploy_patient_contract(first_name, last_name, iid, bdate, email, phone, zip_code, city, encryption_key):
+def deploy_contract_address(first_name, last_name, iid, bdate, email, phone, zip_code, city, encryption_key):
     """Deploy the patient contract to Sepolia"""
     construct_txn = Patient.constructor(
         first_name, last_name, iid, bdate,
@@ -258,11 +258,11 @@ def deploy_patient_contract(first_name, last_name, iid, bdate, email, phone, zip
     tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
     return tx_receipt['contractAddress']
 
-def save_patient_data(form, contract_address, patient_wallet_address):
+def save_user_data(form, contract_address, patient_wallet_address):
     pass_hash = hashlib.sha224(
         bytes(form.password.data, encoding='utf-8')
     ).hexdigest()
-    patient_data = {
+    user_data = {
         "user_type": "patient",
         "first_name": fernet.encrypt(form.name_first.data.encode('utf-8')).decode('utf-8'),
         "last_name": fernet.encrypt(form.name_last.data.encode('utf-8')).decode('utf-8'),
@@ -277,7 +277,7 @@ def save_patient_data(form, contract_address, patient_wallet_address):
         "password_hash": fernet.encrypt(pass_hash.encode('utf-8')).decode('utf-8'),
         "created_at": datetime.now()
     }
-    result = patients_collection.insert_one(patient_data)
+    result = patients_collection.insert_one(user_data)
     print(f"Patient data saved successfully with ID: {result.inserted_id}")
     return result.inserted_id
 
@@ -306,11 +306,11 @@ def patient_registration():
                 flash("Invalid private key. Please double-check your input.", "danger")
                 return redirect(url_for('patient_registration'))
             encryption_key = Fernet.generate_key().decode('utf-8')
-            contract_address = deploy_patient_contract(
+            contract_address = deploy_contract_address(
                 first_name, last_name, iid, bdate,
                 email, phone, zip_code, city, encryption_key
             )
-            save_patient_data(form, contract_address, patient_wallet_address)
+            save_user_data(form, contract_address, patient_wallet_address)
             patient_qr = f"https://api.qrserver.com/v1/create-qr-code/?data={contract_address}&size=150x150"
             print(f"Patient registered: {first_name} {last_name}")
             print(f"Contract deployed at: {contract_address}")
@@ -357,7 +357,7 @@ def login():
                             "contract_address": decrypted_contract,
                             "created_at": patient['created_at'].strftime('%Y-%m-%d %H:%M:%S')
                         }
-                        session['patient_data'] = decrypted_data
+                        session['user_data'] = decrypted_data
                         return redirect(url_for('dashboard'))
                     else:
                         flash("Incorrect password. Please try again.", "danger")
@@ -370,17 +370,17 @@ def login():
 
 @app.route('/dashboard')
 def dashboard():
-    data = session.get('patient_data')
+    data = session.get('user_data')
     unique_id = session.get('current_visit_id')
     if not data:
         flash("Please login first", "warning")
         return redirect(url_for('login'))
-    return render_template('dashboard.html', patient_data=data, unique_id=unique_id)
+    return render_template('dashboard.html', user_data=data, unique_id=unique_id)
 
 @app.route('/add-doctor', methods=['GET', 'POST'])
 def add_doctor():
     form = DoctorRegForm()
-    data = session.get('patient_data')
+    data = session.get('user_data')
     if not data:
         flash("Please login first", "warning")
         return redirect(url_for('login'))
@@ -396,20 +396,20 @@ def add_doctor():
             if result['success']:
                 doctor_data = {
                     "user_type": "doctor",
-                    "account_address": fernet.encrypt(doctor_address.encode('utf-8')).decode('utf-8'),
+                    "wallet_address": fernet.encrypt(doctor_address.encode('utf-8')).decode('utf-8'),
                     "first_name": fernet.encrypt(form.name_first.data.encode('utf-8')).decode('utf-8'),
                     "last_name": fernet.encrypt(form.name_last.data.encode('utf-8')).decode('utf-8'),
                     "email": fernet.encrypt(form.email.data.encode('utf-8')).decode('utf-8'),
                     "employee_id": fernet.encrypt(random_id.encode('utf-8')).decode('utf-8'),
                     "password_hash": fernet.encrypt(pass_hash.encode('utf-8')).decode('utf-8'),
-                    "patient_contract": fernet.encrypt(contract_address.encode('utf-8')).decode('utf-8'),
+                    "contract_address": fernet.encrypt(contract_address.encode('utf-8')).decode('utf-8'),
                     "tx_hash": fernet.encrypt(result['tx_hash'].encode('utf-8')).decode('utf-8') if 'tx_hash' in result else "",
                     "created_at": datetime.now()
                 }
                 db_result = users_collection.insert_one(doctor_data)
                 if db_result.inserted_id:
                     flash(f"Doctor added successfully! Employee ID: {random_id}", 'success')
-                    return redirect(url_for('user_dashboard'))
+                    return redirect(url_for('dashboard'))
                 else:
                     flash('Failed to add doctor to database. Please try again.', 'danger')
             else:
@@ -417,12 +417,12 @@ def add_doctor():
         except Exception as e:
             print(f"Error adding doctor: {e}")
             flash(f'Error adding doctor: {str(e)}', 'danger')
-    return render_template('add_doctor.html', form=form, patient_data=data, employee_id=random_id)
+    return render_template('add_doctor.html', form=form, user_data=data, employee_id=random_id)
 
 @app.route('/add-audit', methods=['GET', 'POST'])
 def add_audit():
     form = AuditRegForm()
-    data = session.get('patient_data')
+    data = session.get('user_data')
     if not data:
         flash("Please login first", "warning")
         return redirect(url_for('login'))
@@ -444,7 +444,7 @@ def add_audit():
                     "email": fernet.encrypt(form.email.data.encode('utf-8')).decode('utf-8'),
                     "employee_id": fernet.encrypt(random_id.encode('utf-8')).decode('utf-8'),
                     "password_hash": fernet.encrypt(pass_hash.encode('utf-8')).decode('utf-8'),
-                    "patient_contract": fernet.encrypt(contract_address.encode('utf-8')).decode('utf-8'),
+                    "contract_address": fernet.encrypt(contract_address.encode('utf-8')).decode('utf-8'),
                     "tx_hash": fernet.encrypt(result['tx_hash'].encode('utf-8')).decode('utf-8') if 'tx_hash' in result else "",
                     "created_at": datetime.now()
                 }
@@ -459,7 +459,7 @@ def add_audit():
         except Exception as e:
             print(f"Error adding auditor: {e}")
             flash(f'Error adding auditor: {str(e)}', 'danger')
-    return render_template('add_audit.html', form=form, patient_data=data, employee_id=random_id)
+    return render_template('add_audit.html', form=form, user_data=data, employee_id=random_id)
 
 @app.route('/user-login', methods=['GET', 'POST'])
 def user_login():
@@ -474,7 +474,7 @@ def user_login():
             for user in all_users:
                 try:
                     decrypted_employee_id = fernet.decrypt(user['employee_id'].encode()).decode()
-                    decrypted_account = fernet.decrypt(user['account_address'].encode()).decode()
+                    decrypted_account = fernet.decrypt(user['wallet_address'].encode()).decode()
                     if decrypted_employee_id == input_employee_id and decrypted_account == input_account_address:
                         decrypted_pass_hash = fernet.decrypt(user['password_hash'].encode()).decode()
                         if decrypted_pass_hash == input_pass_hash:
@@ -484,8 +484,8 @@ def user_login():
                                 "last_name": fernet.decrypt(user['last_name'].encode()).decode(),
                                 "email": fernet.decrypt(user['email'].encode()).decode(),
                                 "employee_id": decrypted_employee_id,
-                                "account_address": decrypted_account,
-                                "patient_contract": fernet.decrypt(user['patient_contract'].encode()).decode(),
+                                "wallet_address": decrypted_account,
+                                "contract_address": fernet.decrypt(user['contract_address'].encode()).decode(),
                                 "created_at": user['created_at'].strftime('%Y-%m-%d %H:%M:%S')
                             }
                             if 'tx_hash' in user:
@@ -508,6 +508,7 @@ def user_login():
 @app.route('/user-dashboard', methods=['GET'])
 def user_dashboard():
     user_data = session.get('user_data')
+    print('user_data: ', user_data)
     if not user_data:
         flash("Please login first", "warning")
         return redirect(url_for('user_login'))
@@ -516,7 +517,7 @@ def user_dashboard():
 @app.route('/visit-hospital', methods=['GET', 'POST'])
 def visit_hospital():
     try:
-        data = session.get('patient_data')
+        data = session.get('user_data')
         if not data:
             flash("Please login first", "warning")
             return redirect(url_for('login'))
@@ -565,7 +566,7 @@ def visit_hospital():
                 medical_records_data = {
                     "unique_id": unique_id,
                     "account_address": fernet.encrypt(patient_address.encode('utf-8')).decode('utf-8'),
-                    "patient_contract": contract_address,
+                    "contract_address": contract_address,
                     "record_msg": fernet.encrypt("New Medical Record is created".encode('utf-8')).decode('utf-8'),
                     "record_details": fernet.encrypt("Visit initiated".encode('utf-8')).decode('utf-8'),
                     "doctor_address": fernet.encrypt("".encode('utf-8')).decode('utf-8'),
@@ -594,40 +595,41 @@ def visit_hospital():
 @app.route('/records', methods=['GET'])
 def records():
     try:
-        data = session.get('patient_data')
+        data = session.get('user_data')
+        print(data)
         if not data:
             flash("Please login first", "warning")
             return redirect(url_for('login'))
         
         # Get records from blockchain
-        print(data['contract_address'])
         contract_address = Web3.to_checksum_address(data['contract_address'])
         contract = w3.eth.contract(address=contract_address, abi=abi)
-        patient_address = Web3.to_checksum_address(data['wallet_address'])
+        wallet_address = Web3.to_checksum_address(data['wallet_address'])
         
         blockchain_records = []
         try:
             # Get all records from blockchain
-            response = contract.functions.sample().call()
-            print('response: ', response)
-            blockchain_records = contract.functions.get_record_details().call()
+            blockchain_records = contract.functions.get_record_details().call({
+                "from": wallet_address
+            })
             print(f"Retrieved {len(blockchain_records)} records from blockchain")
         except Exception as e:
             print(f"Error retrieving blockchain records: {e}")
             # Fall back to MongoDB records if blockchain retrieval fails
             
         # Get records from MongoDB as backup/additional data
-        user_medical_record_raw = medical_records.find({'patient_contract': data['contract_address']})
+        user_medical_record_raw = medical_records.find({'contract_address': data['contract_address']})
         user_medical_record_json_str = json_util.dumps(user_medical_record_raw)
         user_medical_record_dict = json.loads(user_medical_record_json_str)
 
         user_medical_record = []
+        print('user_medical_record_dict: ', user_medical_record_dict)
         for item in user_medical_record_dict:
             try:
                 record_item = {
                     "_id": item["_id"]["$oid"],
                     "unique_id": item["unique_id"],
-                    "patient_contract": item["patient_contract"],
+                    "contract_address": item["contract_address"],
                     "record_msg": fernet.decrypt(item["record_msg"].encode('utf-8')).decode('utf-8'),
                     "record_details": fernet.decrypt(item["record_details"].encode('utf-8')).decode('utf-8'),
                     "doctor_address": fernet.decrypt(item["doctor_address"].encode('utf-8')).decode('utf-8') if item["doctor_address"] else "",
@@ -647,7 +649,7 @@ def records():
                 print(f"Error decrypting record: {e}")
                 continue
 
-        return render_template('medical_records.html', patient_data=data, data=user_medical_record)
+        return render_template('medical_records.html', user_data=data, data=user_medical_record)
     
     except Exception as e:
         print(f"Error during /records: {e}")
@@ -657,11 +659,11 @@ def records():
 @app.route('/profile', methods=['GET'])
 def profile():
     try:
-        data = session.get('patient_data')
+        data = session.get('user_data')
         if not data:
             flash("Please login first", "warning")
             return redirect(url_for('login'))
-        return render_template('profile.html', patient_data=data)
+        return render_template('profile.html', user_data=data)
     except Exception as e:
         print(f"Error during /profile: {e}")
         flash(f"An error occurred: {str(e)}", "danger")
@@ -671,8 +673,8 @@ def profile():
 def view_record(unique_id):
     try:
         # Validate inputs
-        patient_data = session.get("patient_data")
-        if not patient_data:
+        user_data = session.get("user_data")
+        if not user_data:
             flash("Please login first", "warning")
             return redirect(url_for('login'))
 
@@ -692,7 +694,7 @@ def view_record(unique_id):
         try:
             record = {
                 "unique_id": record_doc["unique_id"],
-                "patient_contract": record_doc["patient_contract"],
+                "contract_address": record_doc["contract_address"],
                 "record_msg": fernet.decrypt(record_doc["record_msg"].encode('utf-8')).decode('utf-8'),
                 "record_details": fernet.decrypt(record_doc["record_details"].encode('utf-8')).decode('utf-8'),
                 "doctor_address": fernet.decrypt(record_doc["doctor_address"].encode('utf-8')).decode('utf-8') if record_doc["doctor_address"] else "",
@@ -706,9 +708,9 @@ def view_record(unique_id):
             return redirect(url_for('records'))
 
         # Initialize contract
-        contract_address = Web3.to_checksum_address(patient_data['contract_address'])
+        contract_address = Web3.to_checksum_address(user_data['contract_address'])
         contract_instance = w3.eth.contract(address=contract_address, abi=abi)
-        patient_address = Web3.to_checksum_address(patient_data['wallet_address'])
+        patient_address = Web3.to_checksum_address(user_data['wallet_address'])
 
         # Call the contract function to get a specific record
         try:
@@ -736,7 +738,7 @@ def view_record(unique_id):
             record["blockchain_data"] = "Not available"
             # Continue anyway - we'll show the MongoDB data
 
-        return render_template('record_details.html', record=record, patient_data=patient_data)
+        return render_template('record_details.html', record=record, user_data=user_data)
 
     except Exception as e:
         print(f"Error in view_record: {str(e)}")
