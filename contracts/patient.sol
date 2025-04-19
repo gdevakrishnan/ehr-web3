@@ -271,8 +271,4 @@ contract Patient {
         emit event_doctor_update("Record is updated by doctor.", 2, block.timestamp);
         return "Record is updated by doctor.";
     }
-
-    function sample () public returns (string memory) {
-        return "Hello World";
-    }
 }
