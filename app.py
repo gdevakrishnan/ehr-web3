@@ -625,7 +625,6 @@ def records():
         user_medical_record_dict = json.loads(user_medical_record_json_str)
 
         user_medical_record = []
-        print('user_medical_record_dict: ', user_medical_record_dict)
         for item in user_medical_record_dict:
             try:
                 record_item = {
@@ -691,8 +690,43 @@ def view_record(unique_id):
         if not record_doc:
             flash("Record not found in the database", "danger")
             return redirect(url_for('records'))
-            
-        # Decrypt the record details from MongoDB
+
+        print('record_doc["contract_address"]: ', record_doc["contract_address"])
+
+        # Match decrypted patient contract address
+        matched_patient = None
+        for patient in patients_collection.find():
+            try:
+                decrypted_address = fernet.decrypt(patient["contract_address"].encode('utf-8')).decode('utf-8')
+                if decrypted_address == record_doc["contract_address"]:
+                    matched_patient = patient
+                    break
+            except Exception as e:
+                print(f"Error decrypting patient contract_address: {e}")
+                continue
+
+        if not matched_patient:
+            flash("Associated patient record not found", "danger")
+            return redirect(url_for('records'))
+        
+        print('matched_patient: ', matched_patient)
+
+        # Assign decrypted patient data to user_data (for non-patient users)
+        if user_data['user_type'] != 'patient':
+            try:
+                user_data['patient_first_name'] = fernet.decrypt(matched_patient["first_name"].encode('utf-8')).decode('utf-8')
+                user_data['patient_last_name'] = fernet.decrypt(matched_patient["last_name"].encode('utf-8')).decode('utf-8')
+                user_data['email'] = fernet.decrypt(matched_patient["email"].encode('utf-8')).decode('utf-8')
+                user_data['birth_date'] = fernet.decrypt(matched_patient["birth_date"].encode('utf-8')).decode('utf-8')
+                user_data['phone'] = fernet.decrypt(matched_patient["phone"].encode('utf-8')).decode('utf-8')
+                user_data['insurance_id'] = fernet.decrypt(matched_patient["insurance_id"].encode('utf-8')).decode('utf-8')
+                user_data['city'] = fernet.decrypt(matched_patient["city"].encode('utf-8')).decode('utf-8')
+            except Exception as e:
+                print(f"Error decrypting user data: {e}")
+                flash("Failed to decrypt patient info", "danger")
+                return redirect(url_for('records'))
+
+        # Decrypt the record details
         try:
             record = {
                 "unique_id": record_doc["unique_id"],
@@ -714,14 +748,14 @@ def view_record(unique_id):
         contract_instance = w3.eth.contract(address=contract_address, abi=abi)
         patient_address = Web3.to_checksum_address(user_data['wallet_address'])
 
-        # Call the contract function to get a specific record
+        # Fetch blockchain data
         try:
             blockchain_record = contract_instance.functions.get_record_detail(visit_id).call({
                 "from": patient_address
             })
-            
+
             print('blockchain record', blockchain_record)
-            # Add blockchain data to the record if the call succeeds
+
             record["blockchain_data"] = {
                 "is_uid_generated": blockchain_record[0],
                 "record_id": blockchain_record[1],
@@ -738,7 +772,6 @@ def view_record(unique_id):
         except Exception as e:
             print(f"Warning: Could not retrieve blockchain data: {str(e)}")
             record["blockchain_data"] = "Not available"
-            # Continue anyway - we'll show the MongoDB data
 
         return render_template('record_details.html', record=record, user_data=user_data)
 
