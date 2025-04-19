@@ -125,7 +125,7 @@ class PatientRegForm(FlaskForm):
 
 class LogForm(FlaskForm):
     account_address = StringField('Account Address', validators=[DataRequired()])
-    contract_address = StringField('Contract Address (If Audit put 0)', validators=[DataRequired()])
+    contract_address = StringField('Contract Address', validators=[DataRequired()])
     password = PasswordField('Your Password', validators=[DataRequired()])
     submit = SubmitField('Submit')
 
@@ -221,7 +221,7 @@ def add_audit_to_contract(contract_address, audit_address):
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         print(f"Audit add transaction sent: {tx_hash.hex()}")
         tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-        event_logs = contract.events.event_add_auditor().process_receipt(tx_receipt)
+        event_logs = contract.events.event_add_audit().process_receipt(tx_receipt)
         if event_logs:
             event_data = event_logs[0]['args']
             return {
@@ -438,7 +438,7 @@ def add_audit():
             if result['success']:
                 audit_data = {
                     "user_type": "audit",
-                    "account_address": fernet.encrypt(audit_address.encode('utf-8')).decode('utf-8'),
+                    "wallet_address": fernet.encrypt(audit_address.encode('utf-8')).decode('utf-8'),
                     "first_name": fernet.encrypt(form.name_first.data.encode('utf-8')).decode('utf-8'),
                     "last_name": fernet.encrypt(form.name_last.data.encode('utf-8')).decode('utf-8'),
                     "email": fernet.encrypt(form.email.data.encode('utf-8')).decode('utf-8'),
@@ -475,6 +475,7 @@ def user_login():
                 try:
                     decrypted_employee_id = fernet.decrypt(user['employee_id'].encode()).decode()
                     decrypted_account = fernet.decrypt(user['wallet_address'].encode()).decode()
+                    print('user["wallet_address"]: ', decrypted_employee_id, decrypted_account)
                     if decrypted_employee_id == input_employee_id and decrypted_account == input_account_address:
                         decrypted_pass_hash = fernet.decrypt(user['password_hash'].encode()).decode()
                         if decrypted_pass_hash == input_pass_hash:
@@ -490,6 +491,7 @@ def user_login():
                             }
                             if 'tx_hash' in user:
                                 user_data["tx_hash"] = fernet.decrypt(user['tx_hash'].encode()).decode()
+                            print(user_data)
                             session['user_data'] = user_data
                             flash(f"Welcome, {user_data['first_name']} {user_data['last_name']}!", "success")
                             return redirect(url_for('user_dashboard'))
