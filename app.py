@@ -824,9 +824,59 @@ def update_record(unique_id, wallet_address):
     updated_details = request.form.get('record_details')
     if not updated_details:
         flash("Medical details are required.", "warning")
-        return redirect(url_for('view_record', unique_id=unique_id))  # Or wherever your view is
+        return redirect(url_for('view_record', unique_id=unique_id))
 
     try:
+        # Get record from database to get contract address and patient address
+        record = medical_records.find_one({'unique_id': unique_id})
+        if not record:
+            flash("Record not found.", "danger")
+            return redirect(url_for('dashboard'))
+            
+        contract_address = record.get('contract_address')
+        wallet_address = record.get('account_address')
+        
+        if not contract_address or not wallet_address:
+            flash("Missing contract or patient information.", "danger")
+            return redirect(url_for('view_record', unique_id=unique_id))
+        
+        # Decrypt patient address if it's encrypted
+        if isinstance(wallet_address, str) and wallet_address.startswith('g'):
+            try:
+                wallet_address = fernet.decrypt(wallet_address.encode('utf-8')).decode('utf-8')
+            except Exception as e:
+                app.logger.error(f"Error decrypting patient address: {e}")
+                flash("Error processing patient data.", "danger")
+                return redirect(url_for('view_record', unique_id=unique_id))
+        
+        # Create contract instance
+        contract = w3.eth.contract(address=contract_address, abi=abi)
+        
+        # Build transaction to update record on blockchain
+        nonce = w3.eth.get_transaction_count(account_address)
+        tx = contract.functions.doctor_update_record(
+            int(unique_id),  # Convert string ID to uint256
+            updated_details,
+            wallet_address
+        ).build_transaction({
+            'chainId': w3.eth.chain_id,
+            'gas': 2000000,
+            'gasPrice': w3.eth.gas_price,
+            'nonce': nonce,
+        })
+        
+        # Sign and send transaction
+        signed_tx = w3.eth.account.sign_transaction(tx, PRIVATE_KEY)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        
+        # Wait for transaction receipt
+        tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        
+        if tx_receipt['status'] != 1:
+            flash('Blockchain transaction failed', 'danger')
+            return redirect(url_for('view_record', unique_id=unique_id))
+        
+        # Update record in MongoDB
         result = medical_records.update_one(
             {'unique_id': unique_id},
             {'$set': {
@@ -834,16 +884,17 @@ def update_record(unique_id, wallet_address):
                 'doctor_address': fernet.encrypt(wallet_address.encode('utf-8')).decode('utf-8')
             }}
         )
+        
         if result.modified_count > 0:
-            flash("Medical record updated successfully.", "success")
+            flash("Medical record updated successfully on blockchain.", "success")
         else:
-            flash("No changes were made.", "info")
+            flash("Record updated on blockchain but database update failed.", "warning")
+            
     except Exception as e:
         app.logger.error(f"Error updating record {unique_id}: {e}")
-        flash("An error occurred while updating the record.", "danger")
+        flash(f"An error occurred while updating the record: {str(e)}", "danger")
 
     return redirect(url_for('view_record', unique_id=unique_id))
-
 
 if __name__ == '__main__':
     app.run(debug=True)
