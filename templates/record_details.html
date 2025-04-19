@@ -1,0 +1,107 @@
+{% extends 'layout.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block styles %}
+<style>
+    .header_container {
+        margin-top: 80px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container header_container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Medical Record Details</h4>
+                    <small>Record ID: {{ record.unique_id }}</small>
+                </div>
+                <div class="card-body">
+                    <!-- Patient Info -->
+                    <div class="mb-4">
+                        <h5>Patient Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Name:</strong> {{ patient_data.first_name }} {{ patient_data.last_name }}</p>
+                                <p><strong>Birth Date:</strong> {{ patient_data.birth_date }}</p>
+                                <p><strong>Insurance ID:</strong> {{ patient_data.insurance_id }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Email:</strong> {{ patient_data.email }}</p>
+                                <p><strong>Phone:</strong> {{ patient_data.phone }}</p>
+                                <p><strong>Location:</strong> {{ patient_data.city }}, {{ patient_data.zip_code }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Record Details -->
+                    <div class="mb-4">
+                        <h5>Record Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Created:</strong> {{ record.created_at.strftime('%Y-%m-%d %H:%M:%S') if record.created_at is not string else record.created_at }}</p>
+                                <p><strong>Status:</strong> {{ record.record_msg }}</p>
+                                <p><strong>Contract Address:</strong> 
+                                    <a href="https://sepolia.etherscan.io/address/{{ record.patient_contract }}" target="_blank" class="text-break">
+                                        {{ record.patient_contract }}
+                                    </a>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Doctor:</strong> {{ record.doctor_address if record.doctor_address else 'Not assigned' }}</p>
+                                <p><strong>Auditor:</strong> {{ record.audit_address if record.audit_address else 'Not assigned' }}</p>
+                                <p><strong>Transaction:</strong> 
+                                    {% if record.tx_hash %}
+                                    <a href="https://sepolia.etherscan.io/tx/{{ record.tx_hash }}" target="_blank" class="text-break">
+                                        {{ record.tx_hash }}
+                                    </a>
+                                    {% else %}
+                                    Not available
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Record Details -->
+                    <div class="mb-4">
+                        <h5>Medical Details</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <pre class="mb-0">{{ record.record_details }}</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blockchain Data -->
+                    {% if record.blockchain_data and record.blockchain_data != "Not available" %}
+                    <hr>
+                    <div class="mb-4">
+                        <h5>Blockchain Record Data</h5>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <pre class="mb-0">{{ record.blockchain_data }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('records') }}" class="btn btn-secondary">Back to Records</a>
+                        {% if session.get('user_data') and session.get('user_data').user_type == 'doctor' %}
+                        <a href="#" class="btn btn-primary">Update Record</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

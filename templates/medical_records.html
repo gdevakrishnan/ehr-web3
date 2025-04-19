@@ -136,6 +136,9 @@ Medical Records
                 <span class="field-label">Created At:</span>
                 <span class="field-value">{{ record.created_at.split('T')[0] }} / {{ record.created_at.split('T')[1][0:5] }}</span>
             </div>
+            <div class="actions">
+                <a href="{{ url_for('view_record', unique_id=record.unique_id) }}">view</a>
+            </div>
         </div>
         {% endfor %}
     </div>
